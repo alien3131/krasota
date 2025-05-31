@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Плеер</title> <!-- Упрощенный заголовок страницы -->
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans&display=swap" rel="stylesheet">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+
+    <style>
+        /* Общие стили для всего тела страницы */
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            /* Шрифты теперь не так важны, но оставим для общего стиля */
+            font-family: 'Open Sans', Arial, sans-serif;
+            color: #f80000;
+            background: linear-gradient(to right bottom, #fc2847, #ff4f00);
+        }
+
+        /* Стили для контейнера */
+        .container {
+            background-color: rgba(44, 62, 80, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        /* НОВЫЙ КОНТЕЙНЕР для изображения и кнопки */
+        .album-art-wrapper {
+            position: relative; /* Делает его базой для position: absolute кнопки */
+            max-width: 250px; /* Должен быть такой же ширины, как и изображение */
+            height: auto; /* Высота по содержимому */
+            margin: 0 auto; /* Центрируем, нижний отступ теперь не нужен, т.к. нет текста под ним */
+        }
+
+        /* Стили для изображения обложки */
+        .album-art {
+            max-width: 100%; /* Растягиваем изображение на всю ширину родителя */
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: block; /* Убирает лишние отступы под изображением */
+        }
+
+        /* Скрываем стандартный аудиоплеер */
+        audio {
+            display: none;
+        }
+
+        /* Стили для пользовательской кнопки Play */
+        #playButton {
+            position: absolute; /* Остается absolute */
+            top: 120%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            border-radius: 200%;
+            background-color: #3498db;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+            transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #playButton:hover {
+            background-color: #2980b9;
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        #playButton:disabled {
+            background-color: #7f8c8d;
+            cursor: default;
+            box-shadow: none;
+            transform: translate(-50%, -50%);
+        }
+
+        #playButton svg {
+            width: 50px;
+            height: 50px;
+            color: #ecf0f1;
+        }
+
+        /* Медиа-запросы для адаптивности */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            .album-art-wrapper {
+                max-width: 200px;
+            }
+            #playButton {
+                width: 80px;
+                height: 80px;
+            }
+            #playButton svg {
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- НОВЫЙ КОНТЕЙНЕР для изображения и кнопки -->
+        <div class="album-art-wrapper">
+            <img src="papei.jpg" alt="Обложка песни" class="album-art">
+            <button id="playButton">
+                <svg id="playPath" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" style="display: block;">
+                    <path fill-rule="evenodd" d="M3 8.643 14 15.5l-11 6.857V8.643ZM15 8.643 24 15.5l-9 6.857V8.643Z" clip-rule="evenodd" />
+                </svg>
+                <svg id="pausePath" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" style="display: none;">
+                    <path fill-rule="evenodd" d="M6 5V19C6 19.5523 5.55228 20 5 20H3C2.44772 20 2 19.5523 2 19V5C2 4.44772 2.44772 4 3 4H5C5.55228 4 6 4.44772 6 5ZM11 5V19C11 19.5523 10.5523 20 10 20H8C7.44772 20 7 19.5523 7 19V5C7 4.44772 7.44772 4 8 4H10C10.5523 4 11 4.44772 11 5Z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+        <!-- КОНЕЦ НОВОГО КОНТЕЙНЕРА -->
+
+        <!-- Элемент audio может быть где угодно, он скрыт -->
+        <audio id="mySongPlayer">
+            <source src="krasota.mp3" type="audio/mpeg">
+            Ваш браузер не поддерживает аудиоэлемент.
+        </audio>
+    </div>
+
+    <script>
+        const audioPlayer = document.getElementById('mySongPlayer');
+        const playButton = document.getElementById('playButton');
+        const playPath = document.getElementById('playPath');
+        const pausePath = document.getElementById('pausePath');
+
+        let clicksToPlay = 0; // Счетчик, сколько раз еще нужно воспроизвести звук
+        let isPlayingSequence = false; // Флаг: идет ли сейчас серия воспроизведений
+
+        // Устанавливаем иконку (всегда Play), хотя визуально она и так всегда Play
+        function setPlayIcon() {
+            playPath.style.display = 'block';
+            pausePath.style.display = 'none';
+        }
+
+        // Устанавливаем громкость на максимум при загрузке
+        audioPlayer.volume = 1.0;
+        setPlayIcon(); // Изначально показываем иконку "Play"
+        playButton.disabled = true; // Отключаем кнопку, пока аудио не загрузится
+
+        // Функция для воспроизведения одной итерации звука
+        function playNextSoundInSequence() {
+            if (clicksToPlay > 0) {
+                clicksToPlay--; // Уменьшаем счетчик
+                audioPlayer.currentTime = 0; // Всегда начинаем с начала
+
+                console.log(`Воспроизводим звук. Осталось: ${clicksToPlay} раз(а).`);
+
+                const playPromise = audioPlayer.play();
+
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // Воспроизведение успешно начато
+                    }).catch(error => {
+                        // Ошибка воспроизведения (например, блокировка браузером)
+                        console.error("Ошибка воспроизведения в серии:", error);
+                        // Оставляем кнопку активной, чтобы пользователь мог попробовать снова
+                        // (даже если последовательность прервана)
+                        isPlayingSequence = false;
+                        clicksToPlay = 0; 
+                    });
+                }
+            } else {
+                // Если счетчик дошел до нуля, серия завершена
+                isPlayingSequence = false;
+                console.log("Серия воспроизведений завершена.");
+            }
+        }
+
+        // Обработчик нажатия на кнопку Play
+        playButton.addEventListener('click', () => {
+            clicksToPlay++; // Увеличиваем счетчик при каждом клике
+            console.log(`Кнопка нажата. Общее количество кликов в очереди: ${clicksToPlay}`);
+
+            if (!isPlayingSequence) {
+                // Если сейчас не идет никакая серия воспроизведений, запускаем новую
+                isPlayingSequence = true;
+                console.log("Запускаем новую серию воспроизведений.");
+                playNextSoundInSequence(); // Начинаем воспроизведение первой песни
+            } else {
+                // Если серия уже идет, просто добавляем в очередь
+                console.log("Добавили клик в текущую очередь.");
+            }
+        });
+
+        // Слушатель события 'ended' - звук закончился
+        audioPlayer.addEventListener('ended', () => {
+            console.log("Событие 'ended' сработало.");
+            if (isPlayingSequence) {
+                // Если серия воспроизведений активна, пробуем воспроизвести следующий звук в очереди
+                playNextSoundInSequence();
+            }
+        });
+
+        // Слушатель для ошибок загрузки/воспроизведения аудио
+        audioPlayer.addEventListener('error', (e) => {
+            console.error("Произошла фатальная ошибка загрузки аудио:", e);
+            playButton.disabled = true; // Отключаем кнопку, если файл не загрузился
+            isPlayingSequence = false;
+            clicksToPlay = 0; // Сбрасываем счетчик
+            setPlayIcon();
+        });
+
+        // Слушатель для подтверждения загрузки метаданных аудио
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            console.log("Метаданные аудио загружены. Длительность:", audioPlayer.duration, "сек.");
+            playButton.disabled = false; // Включаем кнопку, когда аудио готово к воспроизведению
+        });
+
+    </script>
+</body>
+</html>
